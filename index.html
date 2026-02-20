@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patient Shared Health Document Reader</title>
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #f5f5f4;
+            --surface: #ffffff;
+            --surface-raised: #fafaf9;
+            --border: #e2e1de;
+            --border-subtle: #eeedeb;
+            --text: #1c1917;
+            --text-secondary: #57534e;
+            --text-muted: #a8a29e;
+
+            --accent: #dc2626;
+            --accent-dim: #b91c1c;
+            --accent-bg: rgba(220, 38, 38, 0.04);
+            --accent-border: rgba(220, 38, 38, 0.15);
+
+            --green: #16a34a;
+            --green-bg: rgba(22, 163, 74, 0.06);
+            --green-border: rgba(22, 163, 74, 0.2);
+
+            --red: #dc2626;
+            --red-bg: rgba(220, 38, 38, 0.05);
+            --red-border: rgba(220, 38, 38, 0.18);
+
+            --font-mono: 'IBM Plex Mono', monospace;
+            --font-sans: 'IBM Plex Sans', system-ui, sans-serif;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 620px;
+            margin: 0 auto;
+            padding: 24px 20px 64px;
+        }
+
+        /* ---- Header ---- */
+        header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding-bottom: 20px;
+            margin-bottom: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-mark {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: #fff;
+            font-family: var(--font-mono);
+        }
+
+        .header-title {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text);
+        }
+
+        .header-subtitle {
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 1px;
+        }
+
+        .header-badges {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .proto-badge {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 500;
+            padding: 3px 8px;
+            border-radius: 3px;
+            background: var(--surface-raised);
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+        }
+
+        /* ---- Panel ---- */
+        .panel {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .panel-bar {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            background: var(--surface-raised);
+        }
+
+        .panel-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: var(--accent);
+        }
+
+        .panel-label {
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text);
+        }
+
+        .panel-tag {
+            margin-left: auto;
+            font-family: var(--font-mono);
+            font-size: 10px;
+            color: var(--text-muted);
+            padding: 2px 6px;
+            border: 1px dashed var(--border);
+            border-radius: 3px;
+        }
+
+        .panel-body {
+            padding: 20px 16px;
+        }
+
+        /* ---- Steps ---- */
+        .steps {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 20px;
+        }
+
+        .step {
+            flex: 1;
+            padding: 6px 4px;
+            text-align: center;
+            background: var(--surface-raised);
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--text-muted);
+            border-radius: 3px;
+            transition: all 0.15s ease;
+        }
+
+        .step.active {
+            background: var(--accent-bg);
+            color: var(--accent);
+            border: 1px solid var(--accent-border);
+        }
+
+        .step.complete {
+            background: var(--accent-dim);
+            color: #fff;
+        }
+
+        /* ---- Sections ---- */
+        .section {
+            margin-bottom: 18px;
+        }
+
+        .section:last-child {
+            margin-bottom: 0;
+        }
+
+        .section-label {
+            font-family: var(--font-mono);
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-subtle);
+        }
+
+        /* ---- Forms ---- */
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        .form-group:last-child {
+            margin-bottom: 0;
+        }
+
+        label {
+            display: block;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            color: var(--text);
+            transition: border-color 0.15s ease;
+        }
+
+        input::placeholder, textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--accent-dim);
+        }
+
+        /* ---- Buttons ---- */
+        button {
+            padding: 9px 16px;
+            border: none;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.12s ease;
+        }
+
+        button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            background: var(--accent-dim);
+        }
+
+        .btn-secondary {
+            background: var(--surface-raised);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            border-color: #a8a29e;
+        }
+
+        .w-full { width: 100%; }
+
+        /* ---- Status ---- */
+        .status {
+            padding: 10px 12px;
+            border-radius: 4px;
+            margin-bottom: 14px;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-success {
+            background: var(--green-bg);
+            border: 1px solid var(--green-border);
+            color: var(--green);
+        }
+
+        .status-error {
+            background: var(--red-bg);
+            border: 1px solid var(--red-border);
+            color: var(--red);
+        }
+
+        /* ---- Code / Data blocks ---- */
+        .resource-box {
+            background: #1c1917;
+            border: 1px solid #1c1917;
+            border-radius: 4px;
+            padding: 10px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: #d6d3d1;
+            max-height: 200px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            line-height: 1.5;
+        }
+
+        /* ---- Data table ---- */
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .data-table tr {
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .data-table tr:last-child {
+            border-bottom: none;
+        }
+
+        .data-table th,
+        .data-table td {
+            padding: 8px 0;
+            text-align: left;
+            font-family: var(--font-mono);
+            font-size: 12px;
+        }
+
+        .data-table th {
+            color: var(--text-muted);
+            font-weight: 500;
+            width: 100px;
+        }
+
+        .data-table td {
+            color: var(--text);
+        }
+
+        /* ---- Badges ---- */
+        .badges {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-bottom: 10px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: 600;
+            font-family: var(--font-mono);
+        }
+
+        .badge-loinc {
+            background: rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            color: #60a5fa;
+        }
+
+        .badge-shared {
+            background: rgba(37, 99, 235, 0.05);
+            border: 1px solid rgba(37, 99, 235, 0.18);
+            color: #2563eb;
+        }
+
+        .badge-author {
+            background: rgba(167, 139, 250, 0.1);
+            border: 1px solid rgba(167, 139, 250, 0.2);
+            color: #a78bfa;
+        }
+
+        /* ---- PDF ---- */
+        .pdf-frame {
+            border: 1px solid var(--border);
+            border-radius: 4px;
+            overflow: hidden;
+            background: var(--bg);
+        }
+
+        .pdf-frame iframe {
+            width: 100%;
+            height: 300px;
+            border: none;
+            display: block;
+        }
+
+        .pdf-placeholder {
+            height: 140px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-muted);
+            gap: 6px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+        }
+
+        .pdf-placeholder-icon {
+            font-size: 28px;
+            opacity: 0.4;
+        }
+
+        .pdf-missing {
+            color: var(--red);
+            opacity: 0.7;
+        }
+
+        /* ---- QR Scanner ---- */
+        #qr-reader {
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            aspect-ratio: 1;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        #qr-reader video {
+            border-radius: 6px;
+            object-fit: cover;
+        }
+
+        #qr-reader img[alt="Info icon"],
+        #qr-reader span,
+        #qr-reader a {
+            display: none !important;
+        }
+
+        .qr-scan-controls {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .hidden { display: none !important; }
+        .mt-16 { margin-top: 14px; }
+        .mt-20 { margin-top: 18px; }
+
+        /* ---- Verification ---- */
+        .verify-summary {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 12px;
+            min-width: 0;
+        }
+
+        .verify-summary-item {
+            flex: 1;
+            min-width: 0;
+            text-align: center;
+            padding: 10px 6px;
+            border-radius: 6px;
+            font-family: var(--font-mono);
+        }
+
+        .verify-summary-count {
+            font-size: 20px;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+
+        .verify-summary-label {
+            font-size: 9px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            margin-top: 2px;
+        }
+
+        .verify-summary-pass {
+            background: var(--green-bg);
+            border: 1px solid var(--green-border);
+        }
+        .verify-summary-pass .verify-summary-count { color: var(--green); }
+        .verify-summary-pass .verify-summary-label { color: var(--green); opacity: 0.7; }
+
+        .verify-summary-warn {
+            background: rgba(217, 119, 6, 0.05);
+            border: 1px solid rgba(217, 119, 6, 0.18);
+        }
+        .verify-summary-warn .verify-summary-count { color: #d97706; }
+        .verify-summary-warn .verify-summary-label { color: #d97706; opacity: 0.7; }
+
+        .verify-summary-fail {
+            background: var(--red-bg);
+            border: 1px solid var(--red-border);
+        }
+        .verify-summary-fail .verify-summary-count { color: var(--red); }
+        .verify-summary-fail .verify-summary-label { color: var(--red); opacity: 0.7; }
+
+        .verify-bar {
+            height: 6px;
+            border-radius: 3px;
+            overflow: hidden;
+            display: flex;
+            margin-bottom: 14px;
+            background: var(--border-subtle);
+        }
+
+        .verify-bar-pass { background: var(--green); }
+        .verify-bar-warn { background: #d97706; }
+        .verify-bar-fail { background: var(--red); }
+
+        .verify-list {
+            list-style: none;
+            padding: 0;
+            display: grid;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .verify-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 10px;
+            border-radius: 4px;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            min-width: 0;
+            overflow: hidden;
+        }
+
+        .verify-pass {
+            background: var(--green-bg);
+            border: 1px solid var(--green-border);
+        }
+        .verify-warn {
+            background: rgba(217, 119, 6, 0.05);
+            border: 1px solid rgba(217, 119, 6, 0.18);
+        }
+        .verify-fail {
+            background: var(--red-bg);
+            border: 1px solid var(--red-border);
+        }
+
+        .verify-icon {
+            flex-shrink: 0;
+            width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            font-weight: 700;
+            color: #fff;
+        }
+
+        .verify-pass .verify-icon { background: var(--green); }
+        .verify-warn .verify-icon { background: #d97706; }
+        .verify-fail .verify-icon { background: var(--red); }
+
+        .verify-label {
+            color: var(--text-secondary);
+            flex: 1;
+            min-width: 0;
+        }
+
+        .verify-detail {
+            color: var(--text-muted);
+            text-align: right;
+            max-width: 45%;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            font-size: 10px;
+        }
+
+        /* ---- Footer ---- */
+        footer {
+            margin-top: 32px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-family: var(--font-mono);
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        footer a {
+            color: var(--text-secondary);
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            color: var(--accent);
+        }
+
+        /* ---- Scrollbar ---- */
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
+        ::-webkit-scrollbar-track { background: var(--surface-raised); }
+        ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+        @media (max-width: 560px) {
+            .container { padding: 16px 12px 48px; }
+            .panel-body { padding: 16px 12px; }
+            .header-badges { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="header-left">
+                <div class="logo-mark">R</div>
+                <div>
+                    <div class="header-title">Patient Shared Health Document Reader</div>
+                    <div class="header-subtitle">Scan or paste a SMART Health Link</div>
+                </div>
+            </div>
+            <div class="header-badges">
+                <span class="proto-badge">FHIR R4</span>
+                <span class="proto-badge">JWE A256GCM</span>
+            </div>
+        </header>
+
+        <div class="panel">
+            <div class="panel-bar">
+                <div class="panel-dot"></div>
+                <span class="panel-label">Reader</span>
+                <span class="panel-tag">receiver</span>
+            </div>
+
+            <div class="panel-body">
+                <div class="steps">
+                    <div class="step" id="step-1">1 Scan</div>
+                    <div class="step" id="step-2">2 Retrieve</div>
+                    <div class="step" id="step-3">3 View</div>
+                </div>
+
+                <div class="section">
+                    <div class="section-label">Organization</div>
+                    <div class="form-group">
+                        <label>recipient</label>
+                        <input type="text" id="recipientOrg" value="Reader App">
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-label">SHLink Input</div>
+                    <div id="qr-reader" class="hidden"></div>
+                    <div class="form-group">
+                        <label>shlink url (paste or scan)</label>
+                        <textarea id="scannedShlink" rows="3" placeholder="shlink:/eyJ1cmwiOiJodHRwczovL..."></textarea>
+                    </div>
+                    <div class="qr-scan-controls">
+                        <button class="btn-secondary" style="flex:1" id="scanQrBtn" onclick="startQrScan()">
+                            Scan QR Code
+                        </button>
+                        <button class="btn-secondary hidden" id="stopQrBtn" onclick="stopQrScan()">
+                            Stop
+                        </button>
+                    </div>
+                    <button class="btn-primary w-full" onclick="processSHLink()">
+                        Retrieve &amp; Decrypt
+                    </button>
+                </div>
+
+                <div id="result" class="hidden mt-20">
+                    <div id="statusMessage"></div>
+
+                    <div class="section" id="verifySection">
+                        <div class="section-label">Verification</div>
+                        <div class="verify-summary" id="verifySummary"></div>
+                        <div class="verify-bar" id="verifyBar"></div>
+                        <ul class="verify-list" id="verifyList"></ul>
+                    </div>
+
+                    <div class="section" id="demographicsSection">
+                        <div class="section-label">Demographics</div>
+                        <table class="data-table" id="patientDemographics"></table>
+                    </div>
+
+                    <div class="section" id="pdfSection">
+                        <div class="section-label">PDF Document</div>
+                        <div class="badges">
+                            <span class="badge badge-loinc">LOINC 60591-5</span>
+                            <span class="badge badge-shared">patient-shared</span>
+                            <span class="badge badge-author">patient-authored</span>
+                        </div>
+                        <div class="pdf-frame" id="pdfPreview">
+                            <div class="pdf-placeholder">
+                                <div class="pdf-placeholder-icon">PDF</div>
+                                <span>awaiting retrieval</span>
+                            </div>
+                        </div>
+                        <button class="btn-secondary w-full mt-16" onclick="downloadPDF()" id="downloadBtn" disabled>
+                            Download PDF
+                        </button>
+                    </div>
+
+                    <div class="section hidden" id="resourcesSection">
+                        <div class="section-label">FHIR Resources</div>
+                        <div id="resourcesList"></div>
+                    </div>
+
+                    <div class="section">
+                        <div class="section-label">Raw Bundle</div>
+                        <div class="resource-box" id="rawBundle"></div>
+                        <button class="btn-secondary w-full mt-16" onclick="downloadBundle()" id="downloadBundleBtn">
+                            Download Bundle JSON
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <a href="https://github.com/flexpa/pshd-reader">Source Code</a>
+        </footer>
+    </div>
+
+    <script>
+        let currentPdfData = null;
+        let currentBundle = null;
+
+        // Base64URL encode/decode
+        function base64urlEncode(data) {
+            const bytes = new Uint8Array(data);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            const base64 = btoa(binary);
+            return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        }
+
+        function base64urlDecode(str) {
+            str = str.replace(/-/g, '+').replace(/_/g, '/');
+            while (str.length % 4) str += '=';
+            const binary = atob(str);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) {
+                bytes[i] = binary.charCodeAt(i);
+            }
+            return bytes;
+        }
+
+        // Decrypt JWE
+        async function decryptPayload(jwe, keyBytes) {
+            const parts = jwe.split('.');
+            if (parts.length !== 5) throw new Error('Invalid JWE format');
+
+            const [headerB64, , ivB64, ciphertextB64, authTagB64] = parts;
+
+            const iv = base64urlDecode(ivB64);
+            const ciphertext = base64urlDecode(ciphertextB64);
+            const authTag = base64urlDecode(authTagB64);
+
+            const combined = new Uint8Array(ciphertext.length + authTag.length);
+            combined.set(ciphertext);
+            combined.set(authTag, ciphertext.length);
+
+            const key = await crypto.subtle.importKey(
+                'raw', keyBytes, { name: 'AES-GCM' }, false, ['decrypt']
+            );
+
+            const aad = new TextEncoder().encode(headerB64);
+
+            const plaintext = await crypto.subtle.decrypt(
+                { name: 'AES-GCM', iv, additionalData: aad }, key, combined
+            );
+
+            return JSON.parse(new TextDecoder().decode(plaintext));
+        }
+
+        // Update step indicators
+        function updateSteps(activeStep) {
+            for (let i = 1; i <= 3; i++) {
+                const step = document.getElementById(`step-${i}`);
+                step.classList.remove('active', 'complete');
+                if (i < activeStep) step.classList.add('complete');
+                else if (i === activeStep) step.classList.add('active');
+            }
+        }
+
+        // Verification
+        function verifyPayload(payload, bundle) {
+            const checks = [];
+
+            // SHLink payload checks
+            checks.push(payload.url
+                ? { pass: true, label: 'SHLink URL present', detail: payload.url.substring(0, 40) + '...' }
+                : { pass: false, label: 'SHLink URL missing' });
+
+            checks.push(payload.key
+                ? { pass: true, label: 'Encryption key present' }
+                : { pass: false, label: 'Encryption key missing' });
+
+            if (payload.exp) {
+                const expDate = new Date(payload.exp * 1000);
+                const remaining = payload.exp - Math.floor(Date.now() / 1000);
+                if (remaining > 0) {
+                    const hrs = Math.floor(remaining / 3600);
+                    const mins = Math.floor((remaining % 3600) / 60);
+                    const timeStr = hrs > 24 ? `${Math.floor(hrs / 24)}d ${hrs % 24}h` : hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+                    checks.push({ pass: true, label: 'Link not expired', detail: `${timeStr} remaining` });
+                } else {
+                    checks.push({ pass: false, label: 'Link expired', detail: expDate.toLocaleString() });
+                }
+            } else {
+                checks.push({ warn: true, label: 'No expiration set' });
+            }
+
+            checks.push(payload.flag === 'U'
+                ? { pass: true, label: 'Flag "U" (single-use or unprotected)' }
+                : payload.flag
+                    ? { warn: true, label: `Flag "${payload.flag}"` }
+                    : { warn: true, label: 'No flag set' });
+
+            // Bundle structure checks
+            checks.push(bundle.resourceType === 'Bundle'
+                ? { pass: true, label: 'Valid FHIR Bundle' }
+                : { pass: false, label: 'Not a FHIR Bundle', detail: `resourceType: ${bundle.resourceType || 'missing'}` });
+
+            checks.push(bundle.type
+                ? { pass: true, label: `Bundle type: ${bundle.type}` }
+                : { warn: true, label: 'Bundle type missing' });
+
+            const entries = bundle.entry || [];
+            checks.push(entries.length > 0
+                ? { pass: true, label: `${entries.length} entries in bundle` }
+                : { pass: false, label: 'Bundle has no entries' });
+
+            const hasPatient = entries.some(e => e.resource?.resourceType === 'Patient');
+            checks.push(hasPatient
+                ? { pass: true, label: 'Patient resource found' }
+                : { warn: true, label: 'No Patient resource in bundle' });
+
+            const docRefEntry = entries.find(e => e.resource?.resourceType === 'DocumentReference')?.resource;
+            if (!docRefEntry) {
+                checks.push({ pass: false, label: 'DocumentReference missing' });
+            } else {
+                checks.push({ pass: true, label: 'DocumentReference present' });
+
+                const loinc = docRefEntry.type?.coding?.find(c => c.system === 'http://loinc.org');
+                checks.push(loinc?.code === '60591-5'
+                    ? { pass: true, label: 'LOINC 60591-5 (Patient summary)', detail: loinc.display || '' }
+                    : loinc
+                        ? { warn: true, label: `LOINC code: ${loinc.code}`, detail: 'expected 60591-5' }
+                        : { pass: false, label: 'No LOINC type coding' });
+
+                const cat = docRefEntry.category?.find(c =>
+                    c.coding?.some(cd => cd.code === 'patient-shared')
+                );
+                checks.push(cat
+                    ? { pass: true, label: 'Category: patient-shared' }
+                    : { warn: true, label: 'Missing patient-shared category' });
+
+                const attachment = docRefEntry.content?.[0]?.attachment;
+                checks.push(attachment?.contentType === 'application/pdf'
+                    ? { pass: true, label: 'Content-Type: application/pdf' }
+                    : attachment?.contentType
+                        ? { warn: true, label: `Content-Type: ${attachment.contentType}`, detail: 'expected application/pdf' }
+                        : { pass: false, label: 'No content type on attachment' });
+
+                checks.push(attachment?.data
+                    ? { pass: true, label: 'PDF data present', detail: `${Math.round(attachment.data.length * 0.75 / 1024)} KB` }
+                    : { pass: false, label: 'No PDF data in attachment' });
+            }
+
+            const types = [...new Set(entries.map(e => e.resource?.resourceType).filter(Boolean))];
+            if (types.length > 0) {
+                checks.push({ pass: true, label: 'Resource types', detail: types.join(', ') });
+            }
+
+            return checks;
+        }
+
+        function renderVerification(checks) {
+            const pass = checks.filter(c => c.pass).length;
+            const warn = checks.filter(c => c.warn).length;
+            const fail = checks.filter(c => !c.pass && !c.warn).length;
+            const total = checks.length;
+
+            // Summary counters
+            document.getElementById('verifySummary').innerHTML = `
+                <div class="verify-summary-item verify-summary-pass">
+                    <div class="verify-summary-count">${pass}</div>
+                    <div class="verify-summary-label">passed</div>
+                </div>
+                <div class="verify-summary-item verify-summary-warn">
+                    <div class="verify-summary-count">${warn}</div>
+                    <div class="verify-summary-label">warnings</div>
+                </div>
+                <div class="verify-summary-item verify-summary-fail">
+                    <div class="verify-summary-count">${fail}</div>
+                    <div class="verify-summary-label">failed</div>
+                </div>
+            `;
+
+            // Proportional bar
+            const bar = document.getElementById('verifyBar');
+            bar.innerHTML = `
+                <div class="verify-bar-pass" style="width:${(pass/total)*100}%"></div>
+                <div class="verify-bar-warn" style="width:${(warn/total)*100}%"></div>
+                <div class="verify-bar-fail" style="width:${(fail/total)*100}%"></div>
+            `;
+
+            // Individual check cards
+            const list = document.getElementById('verifyList');
+            list.innerHTML = checks.map(c => {
+                const cls = c.pass ? 'verify-pass' : c.warn ? 'verify-warn' : 'verify-fail';
+                const icon = c.pass ? '&#10003;' : c.warn ? '!' : '&#10007;';
+                const detail = c.detail ? `<span class="verify-detail">${c.detail}</span>` : '';
+                return `<li class="verify-item ${cls}"><span class="verify-icon">${icon}</span><span class="verify-label">${c.label}</span>${detail}</li>`;
+            }).join('');
+        }
+
+        // Process SHLink
+        async function processSHLink() {
+            updateSteps(2);
+
+            const shlinkUrl = document.getElementById('scannedShlink').value.trim();
+            const recipient = document.getElementById('recipientOrg').value;
+            const statusDiv = document.getElementById('statusMessage');
+
+            try {
+                if (!shlinkUrl.startsWith('shlink:/')) {
+                    throw new Error('Invalid SHLink format');
+                }
+
+                const payloadB64 = shlinkUrl.substring('shlink:/'.length);
+                const payload = JSON.parse(atob(payloadB64));
+
+                if (payload.exp && payload.exp < Math.floor(Date.now() / 1000)) {
+                    throw new Error('SHLink has expired');
+                }
+
+                const jweRes = await fetch(
+                    payload.url + '?recipient=' + encodeURIComponent(recipient)
+                );
+                if (!jweRes.ok) throw new Error('SHLink not found');
+                const jweText = await jweRes.text();
+
+                const keyBytes = base64urlDecode(payload.key);
+                const bundle = await decryptPayload(jweText, keyBytes);
+                currentBundle = bundle;
+
+                document.getElementById('result').classList.remove('hidden');
+
+                const checks = verifyPayload(payload, bundle);
+                renderVerification(checks);
+                const allOk = checks.every(c => c.pass || c.warn);
+                statusDiv.innerHTML = allOk
+                    ? '<div class="status status-success"><span>OK</span> retrieved, decrypted, verified</div>'
+                    : '<div class="status status-error"><span>WARN</span> decrypted but verification issues found</div>';
+
+                // Demographics
+                const patient = bundle.entry?.find(e => e.resource?.resourceType === 'Patient')?.resource;
+                if (patient) {
+                    const name = patient.name?.[0];
+                    const fullName = name ? `${(name.given || []).join(' ')} ${name.family || ''}` : 'Unknown';
+                    document.getElementById('patientDemographics').innerHTML = `
+                        <tr><th>name</th><td>${fullName}</td></tr>
+                        <tr><th>dob</th><td>${patient.birthDate || 'Unknown'}</td></tr>
+                        <tr><th>gender</th><td>${patient.gender || 'Unknown'}</td></tr>
+                    `;
+                    document.getElementById('demographicsSection').classList.remove('hidden');
+                } else {
+                    document.getElementById('demographicsSection').classList.add('hidden');
+                }
+
+                // PDF
+                const docRef = bundle.entry?.find(e => e.resource?.resourceType === 'DocumentReference')?.resource;
+                if (docRef?.content?.[0]?.attachment?.data) {
+                    currentPdfData = docRef.content[0].attachment.data;
+                    document.getElementById('pdfPreview').innerHTML =
+                        `<iframe src="data:application/pdf;base64,${currentPdfData}"></iframe>`;
+                    document.getElementById('downloadBtn').disabled = false;
+                } else {
+                    document.getElementById('pdfPreview').innerHTML =
+                        '<div class="pdf-placeholder"><div class="pdf-placeholder-icon" style="opacity:0.25">PDF</div><span>No PDF in bundle</span></div>';
+                    document.getElementById('downloadBtn').disabled = true;
+                }
+
+                // FHIR Resources
+                const additional = (bundle.entry || []).filter(e =>
+                    !['Patient', 'DocumentReference'].includes(e.resource?.resourceType)
+                );
+                if (additional.length > 0) {
+                    let html = '<table class="data-table"><tr><th>type</th><th>summary</th></tr>';
+                    additional.forEach(entry => {
+                        const r = entry.resource;
+                        let summary = '';
+                        switch (r.resourceType) {
+                            case 'MedicationStatement':
+                                summary = r.medicationCodeableConcept?.coding?.[0]?.display || 'Medication'; break;
+                            case 'AllergyIntolerance':
+                                summary = r.code?.coding?.[0]?.display || 'Allergy'; break;
+                            case 'Condition':
+                                summary = r.code?.coding?.[0]?.display || 'Condition'; break;
+                            default:
+                                summary = JSON.stringify(r).substring(0, 60) + '...';
+                        }
+                        html += `<tr><td><span class="badge badge-loinc">${r.resourceType}</span></td><td>${summary}</td></tr>`;
+                    });
+                    html += '</table>';
+                    document.getElementById('resourcesList').innerHTML = html;
+                    document.getElementById('resourcesSection').classList.remove('hidden');
+                } else {
+                    document.getElementById('resourcesSection').classList.add('hidden');
+                }
+
+                // Raw Bundle (truncate PDF data for display)
+                const displayBundle = JSON.parse(JSON.stringify(bundle));
+                (displayBundle.entry || []).forEach(e => {
+                    if (e.resource?.resourceType === 'DocumentReference') {
+                        if (e.resource.content?.[0]?.attachment?.data) {
+                            e.resource.content[0].attachment.data = '[BASE64 PDF DATA TRUNCATED]';
+                        }
+                    }
+                });
+                document.getElementById('rawBundle').textContent = JSON.stringify(displayBundle, null, 2);
+
+                updateSteps(3);
+
+            } catch (error) {
+                statusDiv.innerHTML = `<div class="status status-error"><span>ERR</span> ${error.message}</div>`;
+                document.getElementById('result').classList.remove('hidden');
+                console.error(error);
+            }
+        }
+
+        // Download PDF
+        function downloadPDF() {
+            if (!currentPdfData) return;
+            const link = document.createElement('a');
+            link.href = `data:application/pdf;base64,${currentPdfData}`;
+            link.download = 'patient-shared-summary.pdf';
+            link.click();
+        }
+
+        // Download Bundle JSON
+        function downloadBundle() {
+            if (!currentBundle) return;
+            const json = JSON.stringify(currentBundle, null, 2);
+            const blob = new Blob([json], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'fhir-bundle.json';
+            link.click();
+            URL.revokeObjectURL(link.href);
+        }
+
+        // QR Scanner
+        let html5QrCode = null;
+
+        function startQrScan() {
+            const readerDiv = document.getElementById('qr-reader');
+            const scanBtn = document.getElementById('scanQrBtn');
+            const stopBtn = document.getElementById('stopQrBtn');
+
+            readerDiv.classList.remove('hidden');
+            scanBtn.disabled = true;
+            stopBtn.classList.remove('hidden');
+
+            html5QrCode = new Html5Qrcode('qr-reader', { verbose: false });
+            html5QrCode.start(
+                { facingMode: 'environment' },
+                { fps: 10 },
+                (decodedText) => {
+                    document.getElementById('scannedShlink').value = decodedText;
+                    stopQrScan();
+                },
+                () => {}
+            ).catch((err) => {
+                console.error('Camera error:', err);
+                readerDiv.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100%;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);">Camera not available</div>';
+                stopBtn.classList.remove('hidden');
+            });
+        }
+
+        function stopQrScan() {
+            const readerDiv = document.getElementById('qr-reader');
+            const scanBtn = document.getElementById('scanQrBtn');
+            const stopBtn = document.getElementById('stopQrBtn');
+
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                    html5QrCode = null;
+                }).catch(() => {});
+            }
+
+            readerDiv.classList.add('hidden');
+            readerDiv.innerHTML = '';
+            scanBtn.disabled = false;
+            stopBtn.classList.add('hidden');
+        }
+
+        // Init
+        updateSteps(1);
+    </script>
+</body>
+</html>
