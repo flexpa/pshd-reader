@@ -730,6 +730,11 @@
                         <div id="resourcesList"></div>
                     </div>
 
+                    <div class="section hidden" id="rawPayloadSection">
+                        <div class="section-label">SHLink Payload</div>
+                        <div class="resource-box" id="rawPayload"></div>
+                    </div>
+
                     <div class="section">
                         <div class="section-label">Raw Bundle</div>
                         <div class="resource-box" id="rawBundle"></div>
@@ -743,6 +748,7 @@
 
         <footer>
             <a href="https://github.com/flexpa/pshd-reader">Source Code</a>
+            <p style="margin-top:8px;font-size:10px;">This software is provided "as is", without warranty of any kind, express or implied.</p>
         </footer>
     </div>
 
@@ -863,7 +869,7 @@
                 ? { pass: true, label: 'Patient resource found' }
                 : { warn: true, label: 'No Patient resource in bundle' });
 
-            const docRefEntry = entries.find(e => e.resource?.resourceType === 'DocumentReference')?.resource;
+            const docRefEntry = entries.find(e => e.resource?.resourceType === 'DocumentReference' && e.resource.category?.some(c => c.coding?.some(cd => cd.code === 'patient-shared' && (cd.system === 'http://hl7.org/fhir/us/patient-shared/CodeSystem/patient-shared-category' || cd.system === 'https://cms.gov/fhir/CodeSystem/patient-shared-category'))))?.resource;
             if (!docRefEntry) {
                 checks.push({ pass: false, label: 'DocumentReference missing' });
             } else {
@@ -963,6 +969,10 @@
                     throw new Error('SHLink has expired');
                 }
 
+                // Display raw SHLink payload
+                document.getElementById('rawPayload').textContent = JSON.stringify(payload, null, 2);
+                document.getElementById('rawPayloadSection').classList.remove('hidden');
+
                 const jweRes = await fetch(
                     payload.url + '?recipient=' + encodeURIComponent(recipient)
                 );
@@ -998,7 +1008,7 @@
                 }
 
                 // PDF
-                const docRef = bundle.entry?.find(e => e.resource?.resourceType === 'DocumentReference')?.resource;
+                const docRef = bundle.entry?.find(e => e.resource?.resourceType === 'DocumentReference' && e.resource.category?.some(c => c.coding?.some(cd => cd.code === 'patient-shared' && (cd.system === 'http://hl7.org/fhir/us/patient-shared/CodeSystem/patient-shared-category' || cd.system === 'https://cms.gov/fhir/CodeSystem/patient-shared-category'))))?.resource;
                 if (docRef?.content?.[0]?.attachment?.data) {
                     currentPdfData = docRef.content[0].attachment.data;
                     document.getElementById('pdfPreview').innerHTML =
@@ -1127,6 +1137,17 @@
 
         // Init
         updateSteps(1);
+
+        // Auto-process if shlink is in URL fragment (prefixed viewer support)
+        // e.g. https://pshd-shl.exe.xyz/reader#shlink:/eyJ...
+        (function checkUrlForShlink() {
+            const hash = window.location.hash;
+            if (hash && hash.substring(1).startsWith('shlink:/')) {
+                const shlink = decodeURIComponent(hash.substring(1));
+                document.getElementById('scannedShlink').value = shlink;
+                processSHLink();
+            }
+        })();
     </script>
 </body>
 </html>
